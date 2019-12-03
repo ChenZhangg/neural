@@ -74,6 +74,51 @@ class BPNetwork:
     def transfer_derivative(self, output):
         return output * (1.0 - output)
 
+    # def forward_propagate(self, row):
+    #     inputs = row
+    #     for i in range(len(self.network)):
+    #         #print("layer" + str(layer))
+    #         layer = self.network[i]
+    #         new_inputs = []
+    #         for neuron in layer:
+    #             #print("neuron" + str(neuron))
+    #             activation = self.activate(neuron, inputs)
+    #             #print("activation" + str(activation))
+    #             neuron._output = self.transfer(activation)
+    #             new_inputs.append(neuron._output)
+    #         inputs = new_inputs
+    #     #print("forward_propagate result" + str(inputs))
+    #     return inputs
+
+    # def backward_propagate_error(self, expected):
+    #     for i in reversed(range(len(self.network))):
+    #         layer = self.network[i]
+    #         errors = list()
+    #         if i != len(self.network) - 1:
+    #             for j in range(len(layer)):
+    #                 error = 0.0
+    #                 for neuron in self.network[i + 1]:
+    #                     error += (neuron._weights[j] * neuron._delta)
+    #                 errors.append(error)
+    #         else:
+    #             for j in range(len(layer)):
+    #                 neuron = layer[j]
+    #                 errors.append(expected - neuron._output)
+    #                 #print(errors)
+    #         for j in range(len(layer)):
+    #             neuron = layer[j]
+    #             neuron._delta = errors[j] * self.transfer_derivative(neuron._output)
+    #
+    # def update_weights(self, row, learning_rate):
+    #     for i in range(len(self.network)):
+    #         inputs = row[:-1]
+    #         if i != 0:
+    #             inputs = [neuron._output for neuron in self.network[i - 1]]
+    #         for neuron in self.network[i]:
+    #             for j in range(len(inputs)):
+    #                 neuron._weights[j] += learning_rate * neuron._delta * inputs[j]
+    #             neuron._weights[-1] += learning_rate * neuron._delta
+
     def forward_propagate(self, row):
         inputs = row
         for i in range(len(self.network)):
@@ -84,7 +129,10 @@ class BPNetwork:
                 #print("neuron" + str(neuron))
                 activation = self.activate(neuron, inputs)
                 #print("activation" + str(activation))
-                neuron._output = self.transfer(activation)
+                if i != len(self.network) - 1:
+                    neuron._output = self.transfer(activation)
+                else:
+                    neuron._output = activation
                 new_inputs.append(neuron._output)
             inputs = new_inputs
         #print("forward_propagate result" + str(inputs))
@@ -107,7 +155,10 @@ class BPNetwork:
                     #print(errors)
             for j in range(len(layer)):
                 neuron = layer[j]
-                neuron._delta = errors[j] * self.transfer_derivative(neuron._output)
+                if i != len(self.network) - 1:
+                    neuron._delta = errors[j] * self.transfer_derivative(neuron._output)
+                else:
+                    neuron._delta = errors[j]
 
     def update_weights(self, row, learning_rate):
         for i in range(len(self.network)):
@@ -158,11 +209,12 @@ def back_propagation(train, l_rate, n_epoch, n_hidden):
     return(predictions)
 
 l_rate = 0.005
-n_epoch = 100
+n_epoch = 1000
 n_hidden = 10
 
 train = []
-x = np.linspace(-3,3,300)
+
+x = np.linspace(-3,3,600)
 y = []
 for i in x:
     y.append(sin(i))
