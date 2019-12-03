@@ -1,175 +1,221 @@
 import numpy as np
-import math
-import random
-import string
-import matplotlib as mpl
+from math import exp
+from math import sin
+
+from random import seed
+from random import randrange
+from random import random
+from csv import reader
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+
+# Find the min and max values for each column
+def dataset_minmax(dataset):
+    minmax = list()
+    stats = [[min(column), max(column)] for column in zip(*dataset)]
+    return stats
 
 
-# random.seed(0)  #当我们设置相同的seed，每次生成的随机数相同。如果不设置seed，则每次会生成不同的随机数
-# 参考https://blog.csdn.net/jiangjiang_jian/article/details/79031788
-
-# 生成区间[a,b]内的随机数
-def random_number(a, b):
-    return (b - a) * random.random() + a
-
-
-# 生成一个矩阵，大小为m*n,并且设置默认零矩阵
-def makematrix(m, n, fill=0.0):
-    a = []
-    for i in range(m):
-        a.append([fill] * n)
-    return a
+# Rescale dataset columns to the range 0-1
+def normalize_dataset(dataset, minmax):
+    for row in dataset:
+        for i in range(len(row) - 1):
+            row[i] = (row[i] - minmax[i][0]) / (minmax[i][1] - minmax[i][0])
 
 
-# 函数sigmoid(),这里采用tanh，因为看起来要比标准的sigmoid函数好看
-def sigmoid(x):
-    return math.tanh(x)
+class Neuron:
+    def __init__(self, inputs):
+        self._inputs = inputs
+        self._weights = np.random.random((1, inputs))[0, :]
+        self._output = None
+        self._delta = None
+
+    def __str__(self):
+        s = ""
+        s = s + "weights: " + str(self._weights)
+        s = s + "\noutput: " + str(self._output)
+        s = s + "\ndelta: " + str(self._delta)
+        return s
+
+class BPNetwork:
+    # Initialize a network
+    def __init__(self, n_inputs, n_hidden, n_outputs):
+        self.network = list()
+        hidden_layer = [Neuron(n_inputs + 1) for i in range(n_hidden)]
+        self.network.append(hidden_layer)
+        output_layer = [Neuron(n_hidden + 1) for i in range(n_outputs)]
+        self.network.append(output_layer)
+
+    def __str__(self):
+        s = ""
+        i = 0
+        for layer in self.network:
+            s = s + "第" + str(i) + "层：\n"
+            i += 1
+            for neuron in layer:
+                s += str(neuron) + "\n"
+        return s
+
+    def activate(self, neuron, inputs):
+        weights = neuron._weights
+        #print("weights" + str(weights))
+        #print("inputs" + str(inputs))
+        activation = weights[-1]
+        #print(range(len(weights) - 1))
+        for i in range(len(weights) - 1):
+            #print("value {}  {}".format(weights[i], inputs[i]))
+            activation += weights[i] * inputs[i]
+        #print("activation" + str(activation))
+        return activation
+
+    def transfer(self, activation):
+        return 1.0 / (1.0 + exp(-activation))
+
+    def transfer_derivative(self, output):
+        return output * (1.0 - output)
+
+    def forward_propagate(self, row):
+        inputs = row
+        for i in range(len(self.network)):
+            #print("layer" + str(layer))
+            layer = self.network[i]
+            new_inputs = []
+            for neuron in layer:
+                #print("neuron" + str(neuron))
+                activation = self.activate(neuron, inputs)
+                #print("activation" + str(activation))
+                neuron._output = self.transfer(activation)
+                new_inputs.append(neuron._output)
+            inputs = new_inputs
+        #print("forward_propagate result" + str(inputs))
+        return inputs
+
+    def backward_propagate_error(self, expected):
+        for i in reversed(range(len(self.network))):
+            layer = self.network[i]
+            errors = list()
+            if i != len(self.network) - 1:
+                for j in range(len(layer)):
+                    error = 0.0
+                    for neuron in self.network[i + 1]:
+                        error += (neuron._weights[j] * neuron._delta)
+                    errors.append(error)
+            else:
+                for j in range(len(layer)):
+                    neuron = layer[j]
+                    errors.append(expected - neuron._output)
+                    #print(errors)
+            for j in range(len(layer)):
+                neuron = layer[j]
+                neuron._delta = errors[j] * self.transfer_derivative(neuron._output)
+
+    def update_weights(self, row, learning_rate):
+        for i in range(len(self.network)):
+            inputs = row[:-1]
+            if i != 0:
+                inputs = [neuron._output for neuron in self.network[i - 1]]
+            for neuron in self.network[i]:
+                for j in range(len(inputs)):
+                    neuron._weights[j] += learning_rate * neuron._delta * inputs[j]
+                neuron._weights[-1] += learning_rate * neuron._delta
+
+    # Train a network for a fixed number of epochs
+    def train_network(self, train, l_rate, n_epoch):
+        for epoch in range(n_epoch):
+            #print("epoch" + str(epoch))
+            for row in train:
+                #print("row" + str(row))
+                outputs = self.forward_propagate(row)
+                #print("============")
+                #print(outputs)
+                #expected = [0 for i in range(n_outputs)]
+                #expected[row[-1]] = 1
+                expected = row[-1]
+                self.backward_propagate_error(expected)
+                self.update_weights(row, l_rate)
+
+    # Make a prediction with a network
+    def predict(self, row):
+        outputs = self.forward_propagate(row)
+        #return outputs.index(max(outputs))
+        return outputs
 
 
-# 函数sigmoid的派生函数
-def derived_sigmoid(x):
-    return 1.0 - x ** 2
+# Backpropagation Algorithm With Stochastic Gradient Descent
+def back_propagation(train, l_rate, n_epoch, n_hidden):
+    n_inputs = len(train[0]) - 1
+    #n_outputs = len(set([row[-1] for row in train]))
+    n_outputs = 1
+    network = BPNetwork(n_inputs, n_hidden, n_outputs)
+    #print(network)
+    network.train_network(train, l_rate, n_epoch)
+    predictions = list()
+    for row in train:
+        prediction = network.predict(row)
+        #print(row)
+        #print(prediction)
+        predictions.append(prediction[0])
+    return(predictions)
+
+l_rate = 0.005
+n_epoch = 100
+n_hidden = 10
+
+train = []
+x = np.linspace(-3,3,300)
+y = []
+for i in x:
+    y.append(sin(i))
+    train.append([i, sin(i)])
+
+y_pred = back_propagation(train, l_rate, n_epoch, n_hidden)
 
 
-# 构造三层BP网络架构
-class BPNN:
-    def __init__(self, num_in, num_hidden, num_out):
-        # 输入层，隐藏层，输出层的节点数
-        self.num_in = num_in + 1  # 增加一个偏置结点
-        self.num_hidden = num_hidden + 1  # 增加一个偏置结点
-        self.num_out = num_out
+plt.plot(x, y, '-o', label='true')
+plt.plot(x, y_pred, '-o', label='BP-Net')
+plt.legend()
 
-        # 激活神经网络的所有节点（向量）
-        self.active_in = [1.0] * self.num_in
-        self.active_hidden = [1.0] * self.num_hidden
-        self.active_out = [1.0] * self.num_out
+plt.tight_layout()
+plt.show()
 
-        # 创建权重矩阵
-        self.wight_in = makematrix(self.num_in, self.num_hidden)
-        self.wight_out = makematrix(self.num_hidden, self.num_out)
+"""
+# Evaluate an algorithm using a cross validation split
+def evaluate_algorithm(dataset, algorithm, n_folds, *args):
+    folds = cross_validation_split(dataset, n_folds)
+    scores = list()
+    for fold in folds:
+        train_set = list(folds)
+        train_set.remove(fold)
+        train_set = sum(train_set, [])
+        test_set = list()
+        for row in fold:
+            row_copy = list(row)
+            test_set.append(row_copy)
+            row_copy[-1] = None
+        predicted = algorithm(train_set, test_set, *args)
+        actual = [row[-1] for row in fold]
+        accuracy = accuracy_metric(actual, predicted)
+        scores.append(accuracy)
+    return scores
 
-        # 对权值矩阵赋初值
-        for i in range(self.num_in):
-            for j in range(self.num_hidden):
-                self.wight_in[i][j] = random_number(-0.2, 0.2)
-        for i in range(self.num_hidden):
-            for j in range(self.num_out):
-                self.wight_out[i][j] = random_number(-0.2, 0.2)
-
-        # 最后建立动量因子（矩阵）
-        self.ci = makematrix(self.num_in, self.num_hidden)
-        self.co = makematrix(self.num_hidden, self.num_out)
-
-        # 信号正向传播
-
-    def update(self, inputs):
-        if len(inputs) != self.num_in - 1:
-            raise ValueError('与输入层节点数不符')
-
-        # 数据输入输入层
-        for i in range(self.num_in - 1):
-            # self.active_in[i] = sigmoid(inputs[i])  #或者先在输入层进行数据处理
-            self.active_in[i] = inputs[i]  # active_in[]是输入数据的矩阵
-
-        # 数据在隐藏层的处理
-        for i in range(self.num_hidden - 1):
-            sum = 0.0
-            for j in range(self.num_in):
-                sum = sum + self.active_in[i] * self.wight_in[j][i]
-            self.active_hidden[i] = sigmoid(sum)  # active_hidden[]是处理完输入数据之后存储，作为输出层的输入数据
-
-        # 数据在输出层的处理
-        for i in range(self.num_out):
-            sum = 0.0
-            for j in range(self.num_hidden):
-                sum = sum + self.active_hidden[j] * self.wight_out[j][i]
-            self.active_out[i] = sigmoid(sum)  # 与上同理
-
-        return self.active_out[:]
-
-    # 误差反向传播
-    def errorbackpropagate(self, targets, lr, m):  # lr是学习率， m是动量因子
-        if len(targets) != self.num_out:
-            raise ValueError('与输出层节点数不符！')
-
-        # 首先计算输出层的误差
-        out_deltas = [0.0] * self.num_out
-        for i in range(self.num_out):
-            error = targets[i] - self.active_out[i]
-            out_deltas[i] = derived_sigmoid(self.active_out[i]) * error
-
-        # 然后计算隐藏层误差
-        hidden_deltas = [0.0] * self.num_hidden
-        for i in range(self.num_hidden):
-            error = 0.0
-            for j in range(self.num_out):
-                error = error + out_deltas[j] * self.wight_out[i][j]
-            hidden_deltas[i] = derived_sigmoid(self.active_hidden[i]) * error
-
-        # 首先更新输出层权值
-        for i in range(self.num_hidden):
-            for j in range(self.num_out):
-                change = out_deltas[j] * self.active_hidden[i]
-                self.wight_out[i][j] = self.wight_out[i][j] + lr * change + m * self.co[i][j]
-                self.co[i][j] = change
-
-        # 然后更新输入层权值
-        for i in range(self.num_in):
-            for i in range(self.num_hidden):
-                change = hidden_deltas[j] * self.active_in[i]
-                self.wight_in[i][j] = self.wight_in[i][j] + lr * change + m * self.ci[i][j]
-                self.ci[i][j] = change
-
-        # 计算总误差
-        error = 0.0
-        for i in range(len(targets)):
-            error = error + 0.5 * (targets[i] - self.active_out[i]) ** 2
-        return error
-
-    # 测试
-    def test(self, patterns):
-        for i in patterns:
-            print(i[0], '->', self.update(i[0]))
-
-    # 权重
-    def weights(self):
-        print("输入层权重")
-        for i in range(self.num_in):
-            print(self.wight_in[i])
-        print("输出层权重")
-        for i in range(self.num_hidden):
-            print(self.wight_out[i])
-
-    def train(self, pattern, itera=100000, lr=0.1, m=0.1):
-        for i in range(itera):
-            error = 0.0
-            for j in pattern:
-                inputs = j[0]
-                targets = j[1]
-                self.update(inputs)
-                error = error + self.errorbackpropagate(targets, lr, m)
-            if i % 100 == 0:
-                print('误差 %-.5f' % error)
-
-
-# 实例
-def demo():
-    patt = [
-        [[1, 2, 5], [0]],
-        [[1, 3, 4], [1]],
-        [[1, 6, 2], [1]],
-        [[1, 5, 1], [0]],
-        [[1, 8, 4], [1]]
-    ]
-    # 创建神经网络，3个输入节点，3个隐藏层节点，1个输出层节点
-    n = BPNN(3, 3, 1)
-    # 训练神经网络
-    n.train(patt)
-    # 测试神经网络
-    n.test(patt)
-    # 查阅权重值
-    n.weights()
-
-
-demo()
+# Test Backprop on Seeds dataset
+seed(1)
+# load and prepare data
+filename = 'seeds_dataset.csv'
+dataset = load_csv(filename)
+for i in range(len(dataset[0]) - 1):
+    str_column_to_float(dataset, i)
+# convert class column to integers
+str_column_to_int(dataset, len(dataset[0]) - 1)
+# normalize input variables
+minmax = dataset_minmax(dataset)
+normalize_dataset(dataset, minmax)
+# evaluate algorithm
+n_folds = 5
+l_rate = 0.3
+n_epoch = 500
+n_hidden = 5
+scores = evaluate_algorithm(dataset, back_propagation, n_folds, l_rate, n_epoch, n_hidden)
+print('Scores: %s' % scores)
+print('Mean Accuracy: %.3f%%' % (sum(scores) / float(len(scores))))
+"""
