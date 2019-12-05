@@ -1,12 +1,21 @@
-from math import exp
 import numpy as np
+from math import exp
+from math import sin
+from math import pi
+
+
+from random import seed
+from random import randrange
+from random import random
+from csv import reader
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 
-
-def rbf(x, c, s):
+#高斯核函数
+def gaussian(x, c, s):
     """
     核函数
-    :param x: 输入单个数据
+    :param x: 输入数据
     :param c: 中心值
     :param s: 偏差
     :return:
@@ -75,70 +84,210 @@ def kmeans(X, k):
 
     return clusters, stds
 
-class RBFNet:
-    """Implementation of a Radial Basis Function Network"""
+class Neuron:
+    def __init__(self, inputs):
+        self._inputs = inputs
+        self._weights = np.random.random((1, inputs))[0, :]
+        self._output = None
+        self._delta = None
 
-    def __init__(self, k=2, lr=0.01, epochs=100, rbf=rbf, inferStds=True):
-        self.k = k
-        self.lr = lr
-        self.epochs = epochs
-        self.rbf = rbf
-        self.inferStds = inferStds
+    def __str__(self):
+        s = ""
+        s = s + "weights: " + str(self._weights)
+        s = s + "\noutput: " + str(self._output)
+        s = s + "\ndelta: " + str(self._delta)
+        return s
 
-        self.w = np.random.randn(k)
-        self.b = np.random.randn(1)
+class BPNetwork:
+    # Initialize a network
+    def __init__(self, n_inputs, n_hidden, n_outputs):
+        self.network = list()
+        hidden_layer = [Neuron(n_inputs + 1) for i in range(n_hidden)]
+        self.network.append(hidden_layer)
+        output_layer = [Neuron(n_hidden + 1) for i in range(n_outputs)]
+        self.network.append(output_layer)
 
-    def fit(self, X, y):
-        if self.inferStds:
-            # compute stds from data
-            self.centers, self.stds = kmeans(X, self.k)
-        else:
-            # use a fixed std
-            self.centers, _ = kmeans(X, self.k)
-            dMax = max([np.abs(c1 - c2) for c1 in self.centers for c2 in self.centers])
-            self.stds = np.repeat(dMax / np.sqrt(2 * self.k), self.k)
+    def __str__(self):
+        s = ""
+        i = 0
+        for layer in self.network:
+            s = s + "第" + str(i) + "层：\n"
+            i += 1
+            for neuron in layer:
+                s += str(neuron) + "\n"
+        return s
 
-        # training
-        for epoch in range(self.epochs):
-            for i in range(X.shape[0]):
-                # forward pass
-                a = np.array([self.rbf(X[i], c, s) for c, s, in zip(self.centers, self.stds)])
-                F = a.T.dot(self.w) + self.b
+    def activate(self, neuron, inputs):
+        weights = neuron._weights
+        #print("weights" + str(weights))
+        #print("inputs" + str(inputs))
+        activation = weights[-1]
+        #print(range(len(weights) - 1))
+        for i in range(len(weights) - 1):
+            #print("value {}  {}".format(weights[i], inputs[i]))
+            activation += weights[i] * inputs[i]
+        #print("activation" + str(activation))
+        return activation
 
-                loss = (y[i] - F).flatten() ** 2
-                #print('Loss: {0:.2f}'.format(loss[0]))
+    def transfer(self, activation):
+        return 1.0 / (1.0 + exp(-activation))
 
-                # backward pass
-                error = -(y[i] - F).flatten()
+    def transfer_derivative(self, output):
+        return output * (1.0 - output)
 
-                # online update
-                self.w = self.w - self.lr * a * error
-                self.b = self.b - self.lr * error
+    # def forward_propagate(self, row):
+    #     inputs = row
+    #     for i in range(len(self.network)):
+    #         #print("layer" + str(layer))
+    #         layer = self.network[i]
+    #         new_inputs = []
+    #         for neuron in layer:
+    #             #print("neuron" + str(neuron))
+    #             activation = self.activate(neuron, inputs)
+    #             #print("activation" + str(activation))
+    #             neuron._output = self.transfer(activation)
+    #             new_inputs.append(neuron._output)
+    #         inputs = new_inputs
+    #     #print("forward_propagate result" + str(inputs))
+    #     return inputs
 
-    def predict(self, X):
-        y_pred = []
-        for i in range(X.shape[0]):
-            a = np.array([self.rbf(X[i], c, s) for c, s, in zip(self.centers, self.stds)])
-            F = a.T.dot(self.w) + self.b
-            y_pred.append(F)
-        return np.array(y_pred)
+    # def backward_propagate_error(self, expected):
+    #     for i in reversed(range(len(self.network))):
+    #         layer = self.network[i]
+    #         errors = list()
+    #         if i != len(self.network) - 1:
+    #             for j in range(len(layer)):
+    #                 error = 0.0
+    #                 for neuron in self.network[i + 1]:
+    #                     error += (neuron._weights[j] * neuron._delta)
+    #                 errors.append(error)
+    #         else:
+    #             for j in range(len(layer)):
+    #                 neuron = layer[j]
+    #                 errors.append(expected - neuron._output)
+    #                 #print(errors)
+    #         for j in range(len(layer)):
+    #             neuron = layer[j]
+    #             neuron._delta = errors[j] * self.transfer_derivative(neuron._output)
+    #
+    # def update_weights(self, row, learning_rate):
+    #     for i in range(len(self.network)):
+    #         inputs = row[:-1]
+    #         if i != 0:
+    #             inputs = [neuron._output for neuron in self.network[i - 1]]
+    #         for neuron in self.network[i]:
+    #             for j in range(len(inputs)):
+    #                 neuron._weights[j] += learning_rate * neuron._delta * inputs[j]
+    #             neuron._weights[-1] += learning_rate * neuron._delta
+
+    def forward_propagate(self, row):
+        inputs = row
+        for i in range(len(self.network)):
+            #print("layer" + str(layer))
+            layer = self.network[i]
+            new_inputs = []
+            for neuron in layer:
+                #print("neuron" + str(neuron))
+                activation = self.activate(neuron, inputs)
+                #print("activation" + str(activation))
+                if i != len(self.network) - 1:
+                    neuron._output = self.transfer(activation)
+                else:
+                    neuron._output = activation
+                new_inputs.append(neuron._output)
+            inputs = new_inputs
+        #print("forward_propagate result" + str(inputs))
+        return inputs
+
+    def backward_propagate_error(self, expected):
+        for i in reversed(range(len(self.network))):
+            layer = self.network[i]
+            errors = list()
+            if i != len(self.network) - 1:
+                for j in range(len(layer)):
+                    error = 0.0
+                    for neuron in self.network[i + 1]:
+                        error += (neuron._weights[j] * neuron._delta)
+                    errors.append(error)
+            else:
+                for j in range(len(layer)):
+                    neuron = layer[j]
+                    errors.append(expected - neuron._output)
+                    #print(errors)
+            for j in range(len(layer)):
+                neuron = layer[j]
+                if i != len(self.network) - 1:
+                    neuron._delta = errors[j] * self.transfer_derivative(neuron._output)
+                else:
+                    neuron._delta = errors[j]
+
+    def update_weights(self, row, learning_rate):
+        for i in range(len(self.network)):
+            inputs = row[:-1]
+            if i != 0:
+                inputs = [neuron._output for neuron in self.network[i - 1]]
+            for neuron in self.network[i]:
+                for j in range(len(inputs)):
+                    neuron._weights[j] += learning_rate * neuron._delta * inputs[j]
+                neuron._weights[-1] += learning_rate * neuron._delta
+
+    # Train a network for a fixed number of epochs
+    def train_network(self, train, l_rate, n_epoch):
+        for epoch in range(n_epoch):
+            #print("epoch" + str(epoch))
+            for row in train:
+                #print("row" + str(row))
+                outputs = self.forward_propagate(row)
+                #print("============")
+                #print(outputs)
+                #expected = [0 for i in range(n_outputs)]
+                #expected[row[-1]] = 1
+                expected = row[-1]
+                self.backward_propagate_error(expected)
+                self.update_weights(row, l_rate)
+
+    # Make a prediction with a network
+    def predict(self, row):
+        outputs = self.forward_propagate(row)
+        #return outputs.index(max(outputs))
+        return outputs
 
 
-NUM_SAMPLES = 100
-X = np.random.uniform(0., 1., NUM_SAMPLES)
-X = np.sort(X, axis=0)
-print(X)
-noise = np.random.uniform(-0.1, 0.1, NUM_SAMPLES)
-print(noise)
-y = np.sin(2 * np.pi * X) + noise
+# Backpropagation Algorithm With Stochastic Gradient Descent
+def back_propagation(train, l_rate, n_epoch, n_hidden):
+    n_inputs = len(train[0]) - 1
+    #n_outputs = len(set([row[-1] for row in train]))
+    n_outputs = 1
+    network = BPNetwork(n_inputs, n_hidden, n_outputs)
+    #print(network)
+    network.train_network(train, l_rate, n_epoch)
+    predictions = list()
+    for row in train:
+        prediction = network.predict(row)
+        #print(row)
+        #print(prediction)
+        predictions.append(prediction[0])
+    return(predictions)
 
-rbfnet = RBFNet(lr=1e-2, k=2)
-rbfnet.fit(X, y)
+l_rate = 0.005
+n_epoch = 1000
+n_hidden = 10
 
-y_pred = rbfnet.predict(X)
+train = []
 
-plt.plot(X, y, '-o', label='true')
-plt.plot(X, y_pred, '-o', label='RBF-Net')
+
+x = np.linspace(-3,3,600)
+y = []
+for i in x:
+    y.append(sin(i))
+    train.append([i, sin(i)])
+
+
+y_pred = back_propagation(train, l_rate, n_epoch, n_hidden)
+
+
+plt.plot(x, y, '-o', label='true')
+plt.plot(x, y_pred, '-o', label='BP-Net')
 plt.legend()
 
 plt.tight_layout()

@@ -1,6 +1,8 @@
 import numpy as np
 from math import exp
 from math import sin
+from math import pi
+
 
 from random import seed
 from random import randrange
@@ -214,11 +216,25 @@ n_hidden = 10
 
 train = []
 
+"""
 x = np.linspace(-3,3,600)
 y = []
 for i in x:
     y.append(sin(i))
     train.append([i, sin(i)])
+"""
+"""
+x = np.linspace(-6 * pi, 6 * pi, 1200)
+y = []
+for i in x:
+    y.append(sin(i) / abs(i))
+    train.append([i, sin(i) / abs(i)])
+"""
+x = np.linspace(0.1, 10, 1200)
+y = []
+for i in x:
+    y.append(1 / (i * i * i))
+    train.append([i, 1 / (i * i * i)])
 
 y_pred = back_propagation(train, l_rate, n_epoch, n_hidden)
 

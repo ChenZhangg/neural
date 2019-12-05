@@ -1,81 +1,149 @@
 import numpy as np
-import math
+import matplotlib
+
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib import style
 
-x = np.linspace(-3, 3, 600)
-# print(x)
-# print(x[1])
-x_size = x.size
-y = np.zeros((x_size, 1))
-# print(y.size)
-for i in range(x_size):
-    y[i] = math.sin(x[i])
-
-# print(y)
+style.use('ggplot')
 
 
-hidesize = 10
-W1 = np.random.random((hidesize, 1))  # 输入层与隐层之间的权重
-B1 = np.random.random((hidesize, 1))  # 隐含层神经元的阈值
-W2 = np.random.random((1, hidesize))  # 隐含层与输出层之间的权重
-B2 = np.random.random((1, 1))  # 输出层神经元的阈值
-threshold = 0.005
-max_steps = 1001
+class SVM:
+    def __init__(self, visualization=True):
+        self.visualization = visualization
+        self.colors = {1: 'r', -1: 'b'}
+        if self.visualization:
+            self.fig = plt.figure()
+            self.ax = self.fig.add_subplot(1, 1, 1)
+
+    # training
+    def fit(self, data):
+        self.data = data
+        # { ||w||: [w, b] }
+        opt_dict = {}
+
+        transforms = [[1, 1],
+                      [-1, 1],
+                      [-1, -1],
+                      [1, -1]]
+
+        self.max_feature_value = None
+        self.min_feature_value = None
+        for yi in self.data:
+            for featureset in self.data[yi]:
+                for feature in featureset:
+                    self.max_feature_value = max(self.max_feature_value, feature) if (
+                                self.max_feature_value != None) else feature
+                    self.min_feature_value = min(self.min_feature_value, feature) if (
+                                self.min_feature_value != None) else feature
+
+        step_sizes = [
+            self.max_feature_value * 0.1,
+            self.max_feature_value * 0.01,
+            self.max_feature_value * 0.001
+        ]
+
+        b_range_multiple = 3
+        b_multiple = 5
+        latest_optimum = self.max_feature_value * 10
+
+        for step in step_sizes:
+            w = np.array([latest_optimum, latest_optimum])
+            optimized = False
+            while not optimized:
+                for b in np.arange(-1 * self.max_feature_value * b_range_multiple,
+                                   self.max_feature_value * b_range_multiple, step * b_multiple):
+                    for transformation in transforms:
+                        w_t = w * transformation
+                        found_option = True
+                        # yi * (xi . w + b) >= 1
+                        for i in self.data:
+                            for xi in self.data[i]:
+                                yi = i
+                                if not yi * (np.dot(xi, w_t) + b) >= 1:
+                                    found_option = False
+                                    break
+
+                            if not found_option:
+                                break
+
+                        if found_option:
+                            opt_dict[np.linalg.norm(w_t)] = [w_t, b]
+
+                if w[0] < 0:
+                    optimized = True
+                    print("optimized a step.")
+                else:
+                    w = w - step
+
+            norms = sorted([n for n in opt_dict])
+            opt_choice = opt_dict[norms[0]]
+            self.w = opt_choice[0]
+            self.b = opt_choice[1]
+            latest_optimum = opt_choice[0][0] + step * 2
+
+    def predict(self, features):
+        # sign of x.w + b
+        classification = np.sign(np.dot(np.array(features), self.w) + self.b)
+        if self.visualization and classification != 0:
+            self.ax.scatter(features[0], features[1], s=200, marker='*', c=self.colors[classification])
+        return classification
+
+    def visualize(self):
+        [[self.ax.scatter(x[0], x[1], s=100, color=self.colors[i]) for x in self.data[i]] for i in self.data]
+
+        def hyperplane(x, w, b, v):
+            return (-w[0] * x - b + v) / w[1]
+
+        datarange = (self.min_feature_value * 0.9, self.max_feature_value * 1.1)
+        hyp_x_min = datarange[0]
+        hyp_x_max = datarange[1]
+
+        # ( w.x +b ) = 1
+        # positive support vector hyperplane
+        psv1 = hyperplane(hyp_x_min, self.w, self.b, 1)
+        psv2 = hyperplane(hyp_x_max, self.w, self.b, 1)
+        self.ax.plot([hyp_x_min, hyp_x_max], [psv1, psv2], 'k')
+
+        # ( w.x +b ) = -1
+        # negative support vector hyperplane
+        nsv1 = hyperplane(hyp_x_min, self.w, self.b, -1)
+        nsv2 = hyperplane(hyp_x_max, self.w, self.b, -1)
+        self.ax.plot([hyp_x_min, hyp_x_max], [nsv1, nsv2], 'k')
+
+        # ( w.x +b ) = 0
+        # decision boundary hyperplane
+        db1 = hyperplane(hyp_x_min, self.w, self.b, 0)
+        db2 = hyperplane(hyp_x_max, self.w, self.b, 0)
+        self.ax.plot([hyp_x_min, hyp_x_max], [db1, db2], 'y--')
+
+        plt.show()
 
 
-def sigmoid(x_):
-    y_ = 1 / (1 + math.exp(-x_))
-    return y_
+data = {
+    -1: np.array([
+        [-2, 4],
+        [4, 1],
+        [1, 3]
+    ]),
+    1: np.array([
+        [1, 6],
+        [6, 4],
+        [6, 2]
+    ])
+}
 
+toPredict = [[0, 5],
+             [-1, 5],
+             [2, 3],
+             [2, 5],
+             [4, 6],
+             [1, 7],
+             [4, 5]
+             ]
 
-E = np.zeros((max_steps, 1))  # 误差随迭代次数的变化
-Y = np.zeros((x_size, 1))  # 模型的输出结果
-for k in range(max_steps):
-    temp = 0
-    for i in range(x_size):
-        hide_in = np.dot(x[i], W1) - B1  # 隐含层输入数据
-        # print(x[i])
-        hide_out = np.zeros((hidesize, 1))  # 隐含层的输出数据
-        for j in range(hidesize):
-            # print("第{}个的值是{}".format(j,hide_in[j]))
-            # print(j,sigmoid(j))
-            hide_out[j] = sigmoid(hide_in[j])
-            # print("第{}个的值是{}".format(j, hide_out[j]))
-
-        # print(hide_out[3])
-        y_out = np.dot(W2, hide_out) - B2  # 模型输出
-        # print(y_out)
-
-        Y[i] = y_out
-        # print(i,Y[i])
-
-        e = y_out - y[i]  # 模型输出减去实际结果。得出误差
-
-        ##反馈，修改参数
-        dB2 = -1 * threshold * e
-        dW2 = e * threshold * np.transpose(hide_out)
-        dB1 = np.zeros((hidesize, 1))
-        for j in range(hidesize):
-            dB1[j] = np.dot(np.dot(W2[0][j], sigmoid(hide_in[j])), (1 - sigmoid(hide_in[j])) * (-1) * e * threshold)
-
-        dW1 = np.zeros((hidesize, 1))
-
-        for j in range(hidesize):
-            dW1[j] = np.dot(np.dot(W2[0][j], sigmoid(hide_in[j])), (1 - sigmoid(hide_in[j])) * x[i] * e * threshold)
-
-        W1 = W1 - dW1
-        B1 = B1 - dB1
-        W2 = W2 - dW2
-        B2 = B2 - dB2
-        temp = temp + abs(e)
-
-    E[k] = temp
-
-    if k % 100 == 0:
-        print(k)
-
-plt.figure()
-plt.plot(x, y)
-plt.plot(x, Y, color='red', linestyle='--')
-
-plt.show()
+svm = SVM()
+svm.fit(data=data)
+for p in toPredict:
+    svm.predict(p)
+svm.visualize()
