@@ -1,115 +1,84 @@
-from PCA_data import PCA_data
 import numpy as np
-from scipy import linalg as la
-from sklearn.utils import check_array, as_float_array
+import struct
+import matplotlib.pyplot as plt
 
 
 class CCIPCA(object):
-
-    def __init__(self, n_components=2, amnesic=2.0, copy=True):
-        self.n_components = n_components
-        if self.n_components < 2:
-            raise ValueError("must specifiy n_components for CCIPCA")
-
-        self.copy = copy
-        self.amnesic = amnesic
-        self.iteration = 0
-
-    def fit(self, X):
-        X = check_array(X)
-        n_samples, n_features = X.shape
-        X = as_float_array(X, copy=self.copy)
-
-        # init
-        if self.iteration == 0:
-            self.mean_ = np.zeros([n_features], np.float)  # 行向量与行向量相加
-            self.components_ = np.zeros([self.n_components, n_features], np.float)
-        else:
-            if n_features != self.components_.shape[1]:
-                raise ValueError('The dimensionality of the new data and the existing components_ does not match')
-
-                # incrementally fit the model
-        for i in range(0, n_samples):
-            self.partial_fit(X[i, :])
-
-        # update explained_variance_ratio_
-        self.explained_variance_ratio_ = np.sqrt(np.sum(self.components_ ** 2, axis=1))
-
-        # sort by explained_variance_ratio_
-        idx = np.argsort(-self.explained_variance_ratio_)
-        self.explained_variance_ratio_ = self.explained_variance_ratio_[idx]
-        self.components_ = self.components_[idx, :]
-
-        # re-normalize
-        self.explained_variance_ratio_ = (self.explained_variance_ratio_ / self.explained_variance_ratio_.sum())
-
-        for r in range(0, self.components_.shape[0]):  # 归一化
-            self.components_[r, :] /= np.sqrt(np.dot(self.components_[r, :], self.components_[r, :]))
-        # self.components_t = np.zeros((40,self.components_.shape[1]))
-        return self
+    def __init__(self, inputDim, outputDim):
+        self._input_dim = inputDim
+        self._output_dim = outputDim
+        self._n = 1
+        self._mean = 0.1 * np.random.randn(1, self._input_dim)
+        self._eigenVectors = 0.1 * np.random.randn(self._output_dim, self._input_dim)
 
     def _amnestic(self, t):  # amnestic function
-        if t <= int(self.amnesic):
-            _rr = float(t + 2 - 1) / float(t + 2)
-            _lr = float(1) / float(t + 2)
+        [n1, n2, a, C] = [20., 200., 2000., 2.]
+        if t < n1:
+            alpha = 0
+        elif (t >= n1) and (t < n2):
+            alpha = C * (t - n1) / (n2 - n1)
         else:
-            _rr = float(t + 2 - self.amnesic) / float(t + 2)
-            _lr = float(1 + self.amnesic) / float(t + 2)
+            alpha = C + (t - n2) / a
+
+        n = t
+        _lr = float(n - alpha - 1) / n  # learning rate
+        _rr = float(alpha + 1) / n  # residual rate
 
         return [_rr, _lr]
 
-    def partial_fit(self, u):
-        n = float(self.iteration)
-        V = self.components_
-        w1, w2 = self._amnestic(n)
-        self.mean_ = float(n + 1 - 1) / float(n + 1) * self.mean_ + float(1) / float(n + 1) * u
-        if n != 0:
-            # mean center u
-            u = u - self.mean_
+    def update(self, x):
+        assert (x.shape[0] == 1)
 
-        # update components
+        # compute the mean imcrementally
+        self._mean = float(self._n - 1) / self._n * self._mean + float(1) / self._n * x
 
-        for j in range(0, self.n_components):
+        if self._n > 1:
+            u = x - self._mean  # reduce the mean vector
+            [w1, w2] = self._amnestic(self._n)  # conpute the amnestic parameters
+            k = min(self._n, self._output_dim)
+            for i in range(k):  # update all eigenVectors
+                v = self._eigenVectors[i, :].copy()  # get the current eigenVector
+                if (i == k - 1):
+                    v = u.copy()
+                    vn = v / np.linalg.norm(v)  # normalize the vector
+                else:
+                    v = w1 * v + w2 * np.dot(u, v.T) / np.linalg.norm(v) * u  # update the eigenVector
+                    vn = v / np.linalg.norm(v)  # normalize the vector
 
-            if j > n:
-                # the component has already been init to a zerovec
-                pass
+                u = u - np.dot(u, vn.T) * vn  # remove the projection of u on the v
+                self._eigenVectors[i, :] = v.copy()
 
-            elif j == n:
-                # set the component to u
-                V[j, :] = u
-                normedV = V[j, :] / la.norm(V[j, :])
-            else:
-                # update the components
-                V[j, :] = w1 * V[j, :] + w2 * np.dot(u, V[j, :]) * u / la.norm(V[j, :])
-
-                normedV = V[j, :] / la.norm(V[j, :])
-
-            u = u - np.dot(np.dot(u.T, normedV), normedV)
-
-        self.iteration += 1
-        self.components_ = V
-        return
-
-    def transform(self, X):
-        X = check_array(X)
-        X_transformed = X - self.mean_
-        X_transformed = np.dot(X_transformed, self.components_.T)
-        return X_transformed
-
-    def predict(self, X):
-        decompass_data = np.dot(X, self.components_) + self.mean_
-        return decompass_data
+        self._n += 1  # update the mean of the data
 
 
-if __name__ == '__main__':
-    a = PCA_data()
-    imag_data = a.Read_face()
+ccipca = CCIPCA(784, 20)
+filename = 'train-images.idx3-ubyte'
+binfile = open(filename, 'rb')
+buf = binfile.read()
 
-    b = CCIPCA(400)
-    b.fit(imag_data)
+index = 0
+magic, numImages, numRows, numColumns = struct.unpack_from('>IIII', buf, index)
+index += struct.calcsize('>IIII')
 
-    compass_data = b.transform(imag_data)
-    decompass_imag = b.predict(compass_data)
-    a.picture_show(decompass_imag, 'CCIPCA_400')
-    # a.Imag_produce(decompass_imag)
+for i in range(numImages):
+    if (i % 10000 == 0):
+        print("The current step of update is: ", i)
+    im = struct.unpack_from('>784B', buf, index)
+    index += struct.calcsize('>784B')
+    im = np.array(im, dtype=np.int8)
+    im = im.reshape(1, 784)
+    ccipca.update(im)
+
+# ccipca.scaleTo255()
+fig = plt.figure()
+for i in range(20):
+    name = "eigenV" + str(i + 1)
+    im = ccipca._eigenVectors[i, :].copy()
+    im = np.array(im)
+    im = im.reshape(28, 28)
+    plt.subplot(4, 5, i + 1), plt.title(name, fontsize=8)
+    plt.imshow(im), plt.axis('off')
+#     plt.tight_layout()
+
+fig.tight_layout()  # 调整整体空白
+plt.show()

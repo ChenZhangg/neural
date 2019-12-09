@@ -80,7 +80,7 @@ def kmeans(X, k):
 class RBFNet:
     """Implementation of a Radial Basis Function Network"""
 
-    def __init__(self, k=2, lr=0.01, epochs=1, rbf=rbf, inferStds=True):
+    def __init__(self, k=10, lr=0.005, epochs=2000, rbf=rbf, inferStds=True):
         self.k = k
         self.lr = lr
         self.epochs = epochs
@@ -96,8 +96,8 @@ class RBFNet:
         if self.inferStds:
             # compute stds from data
             self.centers, self.stds = kmeans(X, self.k)
-            print(self.centers)
-            print(self.stds)
+            #print(self.centers)
+            #print(self.stds)
         else:
             # use a fixed std
             self.centers, _ = kmeans(X, self.k)
@@ -110,10 +110,10 @@ class RBFNet:
                 # forward pass
                 # 计算核函数转换后的输入
                 a = np.array([self.rbf(X[i], c, s) for c, s, in zip(self.centers, self.stds)])
-                print(a)
+                #print(a)
                 F = a.T.dot(self.w) + self.b
-                print("a.T" + str(a.T))
-                print("F" + str(F))
+                #print("a.T" + str(a.T))
+                #print("F" + str(F))
                 loss = (y[i] - F).flatten() ** 2
                 #print('Loss: {0:.2f}'.format(loss[0]))
 
@@ -132,17 +132,8 @@ class RBFNet:
             y_pred.append(F)
         return np.array(y_pred)
 
-"""
-NUM_SAMPLES = 100
-X = np.random.uniform(0., 1., NUM_SAMPLES)
-X = np.sort(X, axis=0)
-print(X)
-noise = np.random.uniform(-0.1, 0.1, NUM_SAMPLES)
-print(noise)
-y = np.sin(2 * np.pi * X) + noise
-"""
-
-X = np.linspace(-3,3,600)
+n_sample = 1000
+X = np.linspace(-6 * pi, 6 * pi,n_sample)
 y = []
 for i in X:
     y.append(sin(i))
@@ -163,10 +154,10 @@ rbfnet = RBFNet(lr=1e-2, k=2)
 rbfnet.fit(X, y)
 
 y_pred = rbfnet.predict(X)
-
+plt.figure(figsize=(8.5, 6.5))
 plt.plot(X, y, '-o', label='true')
 plt.plot(X, y_pred, '-o', label='RBF-Net')
 plt.legend()
 
 plt.tight_layout()
-#plt.show()
+plt.show()
