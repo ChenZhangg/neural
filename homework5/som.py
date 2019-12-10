@@ -12,7 +12,8 @@ from time import time
 from datetime import timedelta
 import pickle
 import os
-
+from sklearn.decomposition import PCA
+from PIL import Image
 # for unit tests
 from numpy.testing import assert_almost_equal, assert_array_almost_equal
 from numpy.testing import assert_array_equal
@@ -435,6 +436,7 @@ class MiniSom(object):
             winmap[position] = Counter(winmap[position])
         return winmap
 
+"""
 data = [[ 0.80,  0.55,  0.22,  0.03],
         [ 0.82,  0.50,  0.23,  0.03],
         [ 0.80,  0.54,  0.22,  0.03],
@@ -442,6 +444,52 @@ data = [[ 0.80,  0.55,  0.22,  0.03],
         [ 0.79,  0.56,  0.22,  0.03],
         [ 0.75,  0.60,  0.25,  0.03],
         [ 0.77,  0.59,  0.22,  0.03]]
-som = MiniSom(6, 6, 4, sigma=0.3, learning_rate=0.5) # initialization of 6x6 SOM
+som = MiniSom(2, 1, 4, sigma=0.3, learning_rate=0.5) # initialization of 6x6 SOM
 som.train_random(data, 100) # trains the SOM with 100 iterations
 print(som.winner([ 0.82,  0.50,  0.23,  0.03]))
+print(som.winner([ 0.2,  0.59,  0.22,  0.03]))
+"""
+"""
+data = [[ 1,  1,  1,  1],
+        [ 1,  1,  1,  1],
+        [ 1,  1,  1,  1],
+        [ 0,  0,  0,  0],
+        [ 0,  0,  0,  0],
+        [ 0,  0,  0,  0],
+        [ 0,  0,  0,  0]]
+som = MiniSom(2, 1, 4, sigma=0.3, learning_rate=0.5) # initialization of 6x6 SOM
+som.train_random(data, 100) # trains the SOM with 100 iterations
+print(som.winner([ 1,  1,  1,  1]))
+print(som.winner([ 0,  0,  0,  0]))
+"""
+#"""
+def dimension_reduction(data, width, height):
+    data = array(data).reshape(height, width)
+    pca = PCA(n_components=2).fit_transform(data)
+    #print(pca)
+    print(pca.shape)
+    return pca.reshape(1, -1).tolist()[0]
+
+
+ary = [[], []]
+for i in range(2):
+    dir_path = "/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s{}/".format(i + 1)
+    files = os.listdir(dir_path)
+    for file_name in files:
+        if file_name.endswith("bmp"):
+            file_path = dir_path + file_name
+            img = Image.open("/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s2/1.bmp")
+            data = list(img.getdata())
+            width = img.size[0]
+            height = img.size[1]
+            ary[i].append(dimension_reduction(data, width, height))
+
+print(len(ary[0][0]))
+data = ary[0][:5] + ary[1][:5]
+som = MiniSom(2, 1, len(ary[0][0]), sigma=0.3, learning_rate=0.5)
+for i in ary[0][5:]:
+    print(som.winner(i))
+
+for i in ary[1][5:]:
+    print(som.winner(i))
+#"""

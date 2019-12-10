@@ -4,7 +4,7 @@ import math
 from sklearn.decomposition import PCA
 
 def loadImage():
-    img = Image.open("/Users/zhangchen/Documents/资料/学校材料/课程/神经网络及应用/NN作业用到的材料/face/s2/1.bmp")
+    img = Image.open("/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s2/1.bmp")
     width = img.size[0]
     height = img.size[1]
     data = img.getdata()
@@ -31,8 +31,7 @@ def pca():
     newImg = Image.fromarray(recdata)
     return recdata
 
-def myPCA():
-    k = 10
+def myPCA(k = 10):
     data = loadImage()
     n_features, n_samples = data.shape
     #print(n_samples)
@@ -66,13 +65,13 @@ def myPCA():
     # print(rec_data)
     # 压缩后的数据也需要乘100还原成RGB值的范围
     print(rec_data.dtype)
-    newImage = Image.fromarray(rec_data)
-    #newImage.show()
+    newImage = Image.fromarray(rec_data.astype(np.uint8))
+    newImage.show()
     return rec_data
 
 def psnr():
     data = loadImage()
-    rec_data = myPCA()
+    rec_data = myPCA(k=33)
     #rec_data = pca()
     mse = np.mean((data - rec_data) ** 2)
     if mse == 0:

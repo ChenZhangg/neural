@@ -80,7 +80,7 @@ def kmeans(X, k):
 class RBFNet:
     """Implementation of a Radial Basis Function Network"""
 
-    def __init__(self, k=10, lr=0.005, epochs=2000, rbf=rbf, inferStds=True):
+    def __init__(self, k=2, lr=0.005, epochs=2000, rbf=rbf, inferStds=True):
         self.k = k
         self.lr = lr
         self.epochs = epochs
@@ -133,19 +133,21 @@ class RBFNet:
         return np.array(y_pred)
 
 n_sample = 1000
+
+"""
 X = np.linspace(-6 * pi, 6 * pi,n_sample)
 y = []
 for i in X:
     y.append(sin(i))
-
 """
-X = np.linspace(-6 * pi, 6 * pi, 1200)
+"""
+X = np.linspace(-6 * pi, 6 * pi, n_sample)
 y = []
 for i in X:
     y.append(sin(i) / abs(i))
 """
 """
-X = np.linspace(0.1, 10, 1200)
+x = np.concatenate([np.linspace(-10, -1, n_sample / 2), np.linspace(1, 10, n_sample / 2)])
 y = []
 for i in X:
     y.append(1 / (i * i * i))
