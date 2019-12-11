@@ -480,16 +480,15 @@ for i in range(2):
             file_path = dir_path + file_name
             img = Image.open("/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s2/1.bmp")
             data = list(img.getdata())
-            width = img.size[0]
-            height = img.size[1]
-            ary[i].append(dimension_reduction(data, width, height))
+            data = array(data).reshape(height, width)
+            #ary[i].append(dimension_reduction(data, width, height))
 
-print(len(ary[0][0]))
-data = ary[0][:5] + ary[1][:5]
-som = MiniSom(2, 1, len(ary[0][0]), sigma=0.3, learning_rate=0.5)
-for i in ary[0][5:]:
-    print(som.winner(i))
-
-for i in ary[1][5:]:
-    print(som.winner(i))
+# print(len(ary[0][0]))
+# data = ary[0][:5] + ary[1][:5]
+# som = MiniSom(2, 1, len(ary[0][0]), sigma=0.3, learning_rate=0.5)
+# for i in ary[0][5:]:
+#     print(som.winner(i))
+#
+# for i in ary[1][5:]:
+#     print(som.winner(i))
 #"""

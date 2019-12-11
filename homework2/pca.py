@@ -57,6 +57,7 @@ def myPCA(k = 10):
     #print(eigVecIndex)
     feature = eig_vec[:,eigVecIndex]
     #print(feature.shape)
+    print(feature)
     new_data = np.dot(feature.transpose(), normal_data)
     #print(new_data.shape)
     #print(feature.shape)
@@ -71,7 +72,7 @@ def myPCA(k = 10):
 
 def psnr():
     data = loadImage()
-    rec_data = myPCA(k=33)
+    rec_data = myPCA(k=20)
     #rec_data = pca()
     mse = np.mean((data - rec_data) ** 2)
     if mse == 0:
