@@ -3,7 +3,7 @@ from math import sqrt
 from numpy import (array, unravel_index, nditer, linalg, random, subtract,
                    power, exp, pi, zeros, arange, outer, meshgrid, dot,
                    logical_and, mean, std, cov, argsort, linspace, transpose,
-                   einsum, prod, where, nan)
+                   einsum, prod, where, nan, hstack)
 from numpy import sum as npsum
 from collections import defaultdict, Counter
 from warnings import warn
@@ -463,26 +463,46 @@ print(som.winner([ 1,  1,  1,  1]))
 print(som.winner([ 0,  0,  0,  0]))
 """
 #"""
-def dimension_reduction(data, width, height):
-    data = array(data).reshape(height, width)
+def dimension_reduction(data):
     pca = PCA(n_components=2).fit_transform(data)
     #print(pca)
-    print(pca.shape)
-    return pca.reshape(1, -1).tolist()[0]
+    #print(pca.shape)
+    return pca
 
 
-ary = [[], []]
+ary = None
 for i in range(2):
     dir_path = "/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s{}/".format(i + 1)
     files = os.listdir(dir_path)
     for file_name in files:
         if file_name.endswith("bmp"):
             file_path = dir_path + file_name
-            img = Image.open("/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s2/1.bmp")
+            img = Image.open(file_path)
             data = list(img.getdata())
-            data = array(data).reshape(height, width)
-            #ary[i].append(dimension_reduction(data, width, height))
+            data = array(data).reshape(-1, 1)
+            if ary is None:
+                ary = data
+            else:
+                ary = hstack((ary, data))
 
+feature = dimension_reduction(ary)
+data = dot(feature.transpose(), ary)
+print(ary)
+print(data)
+train = []
+for i in (list(range(0, 5)) + list(range(10, 15))):
+    train.append(data[:, i].tolist())
+
+print(train)
+
+test = []
+for i in (list(range(5, 10)) + list(range(15, 20))):
+    test.append(data[:, i].tolist())
+
+som = MiniSom(2, 1, 2, sigma=0.3, learning_rate=0.5)
+som.train_random(train, 100)
+for i in test:
+    print(som.winner(i))
 # print(len(ary[0][0]))
 # data = ary[0][:5] + ary[1][:5]
 # som = MiniSom(2, 1, len(ary[0][0]), sigma=0.3, learning_rate=0.5)
