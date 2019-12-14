@@ -16,6 +16,13 @@ print(data1)
 data = np.hstack((data1, data2, data3, data4))
 mix = np.random.rand(4, 4)
 X = np.dot(data, mix)
+for i in range(4):
+    tmp = X[:, i].reshape(height, width)
+    tmp = (tmp - tmp.min()) / (tmp.max() - tmp.min()) * 255
+    print(tmp)
+    new_im = Image.fromarray(tmp.astype(np.uint8))
+    new_im.save("fastICA4_混合图片{}.png".format(i))
+    #new_im.show()
 # blend1 = data1 * 0.1 + data2 * 0.2 + data3 * 0.3 + data4 * 0.4
 # blend2 = data1 * 0.4 + data2 * 0.1 + data3 * 0.2 + data4 * 0.3
 # blend3 = data1 * 0.3 + data2 * 0.4 + data3 * 0.1 + data4 * 0.2
@@ -24,9 +31,10 @@ print(X.shape)
 transformer = FastICA()
 X_transformed = transformer.fit_transform(X)
 print(X_transformed.shape)
-for i in range(1):
+for i in range(4):
     tmp = X_transformed[:, i].reshape(height, width)
     tmp = (tmp - tmp.min()) / (tmp.max() - tmp.min()) * 255
     print(tmp)
     new_im = Image.fromarray(tmp.astype(np.uint8))
-    new_im.show()
+    new_im.save("fastICA4_分离图片{}.png".format(i))
+    #new_im.show()

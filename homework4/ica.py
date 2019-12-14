@@ -12,11 +12,19 @@ def myICA():
     data2 = np.array(img2.getdata()).reshape(1, width * height) / 255
     data3 = np.array(img3.getdata()).reshape(1, width * height) / 255
     data4 = np.array(img4.getdata()).reshape(1, width * height) / 255
-    blend1 = data1 * 0.1 + data2 * 0.2 + data3 * 0.3 + data4 * 0.4
-    blend2 = data1 * 0.4 + data2 * 0.1 + data3 * 0.2 + data4 * 0.3
-    blend3 = data1 * 0.3 + data2 * 0.4 + data3 * 0.1 + data4 * 0.2
-    blend4 = data1 * 0.2 + data2 * 0.3 + data3 * 0.4 + data4 * 0.1
-    blend = np.vstack((blend1, blend2, blend3, blend4))
+    data = np.vstack((data1, data2, data3, data4))
+    mix = np.random.rand(4, 4)
+    blend = np.dot(mix, data)
+    # blend1 = data1 * 0.1 + data2 * 0.2 + data3 * 0.3 + data4 * 0.4
+    # blend2 = data1 * 0.4 + data2 * 0.1 + data3 * 0.2 + data4 * 0.3
+    # blend3 = data1 * 0.3 + data2 * 0.4 + data3 * 0.1 + data4 * 0.2
+    # blend4 = data1 * 0.2 + data2 * 0.3 + data3 * 0.4 + data4 * 0.1
+    # blend = np.vstack((blend1, blend2, blend3, blend4))
+    for i in range(4):
+        tmp = blend[i, :].reshape(height, width)
+        tmp = (tmp - tmp.min()) / (tmp.max() - tmp.min()) * 255
+        new_im = Image.fromarray(tmp.astype(np.uint8))
+        new_im.save("ICA4_混合图片{}.png".format(i))
     r, c = blend.shape
     mean = np.array([np.mean(blend[i, :]) for i in range(r)])
     for i in range(r):
@@ -64,7 +72,7 @@ def myICA():
         tmp = result[i, :].reshape(height, width)
         tmp = (tmp - tmp.min()) / (tmp.max() - tmp.min()) * 255
         new_im = Image.fromarray(tmp.astype(np.uint8))
-        new_im.show()
+        new_im.save("ICA4_分离图片{}.png".format(i))
 
     #z4 =
 

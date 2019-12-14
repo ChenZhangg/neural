@@ -463,13 +463,14 @@ print(som.winner([ 1,  1,  1,  1]))
 print(som.winner([ 0,  0,  0,  0]))
 """
 #"""
-def dimension_reduction(data):
-    pca = PCA(n_components=2).fit_transform(data)
+def dimension_reduction(data, k = 2):
+    pca = PCA(n_components=k).fit_transform(data)
     #print(pca)
     #print(pca.shape)
     return pca
 
-
+# 设置主元个数
+k = 20
 ary = None
 for i in range(2):
     dir_path = "/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s{}/".format(i + 1)
@@ -485,21 +486,32 @@ for i in range(2):
             else:
                 ary = hstack((ary, data))
 
-feature = dimension_reduction(ary)
+feature = dimension_reduction(ary, k)
 data = dot(feature.transpose(), ary)
 print(ary)
 print(data)
 train = []
-for i in (list(range(0, 5)) + list(range(10, 15))):
+
+# 50%测试数据
+# for i in (list(range(0, 5)) + list(range(10, 15))):
+#     train.append(data[:, i].tolist())
+#
+# print(train)
+#
+# test = []
+# for i in (list(range(5, 10)) + list(range(15, 20))):
+#     test.append(data[:, i].tolist())
+
+# 80%测试数据
+for i in (list(range(0, 8)) + list(range(10, 18))):
     train.append(data[:, i].tolist())
 
 print(train)
 
 test = []
-for i in (list(range(5, 10)) + list(range(15, 20))):
+for i in (list(range(8, 10)) + list(range(18, 20))):
     test.append(data[:, i].tolist())
-
-som = MiniSom(2, 1, 2, sigma=0.3, learning_rate=0.5)
+som = MiniSom(2, 1, k, sigma=0.3, learning_rate=0.5)
 som.train_random(train, 100)
 for i in test:
     print(som.winner(i))

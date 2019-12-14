@@ -3,6 +3,7 @@ import struct
 import matplotlib.pyplot as plt
 from PIL import Image
 from sklearn.decomposition import IncrementalPCA
+import math
 
 class CCIPCA(object):
     def __init__(self, inputDim, outputDim):
@@ -52,6 +53,14 @@ class CCIPCA(object):
                 self._eigenVectors[i, :] = v.copy()
 
         self._n += 1  # update the mean of the data
+
+def psnr(data, rec_data):
+    #rec_data = pca()
+    mse = np.mean((data - rec_data) ** 2)
+    if mse == 0:
+        return 100
+    PIXEL_MAX = 255.0
+    return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 """
     def update(self, x):
         assert (x.shape[0] == 1)
@@ -86,55 +95,58 @@ class CCIPCA(object):
 
 #"""
 #设置主元个数
-k = 10
-filename = "/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s2/1.bmp"
-img = Image.open(filename)
-width = img.size[0]
-height = img.size[1]
-#print(height)
-#print(width)
-ccipca = CCIPCA(height, k)
-data = img.getdata()
-data = np.array(data).reshape(height, width)
-#mean = np.array([np.mean(data[i, :]) for i in range(height)])
-#mean = np.tile(mean.reshape(height, 1), (1, width))
+def run(k = 1):
+    filename = "/Users/zhangchen/Documents/课程/神经网络及应用/NN作业用到的材料/face/s2/1.bmp"
+    img = Image.open(filename)
+    width = img.size[0]
+    height = img.size[1]
+    ccipca = CCIPCA(height, k)
+    data = img.getdata()
+    data = np.array(data).reshape(height, width)
+    #mean = np.array([np.mean(data[i, :]) for i in range(height)])
+    #mean = np.tile(mean.reshape(height, 1), (1, width))
 
-for i in range(width):
-    im = data[:, i].reshape(1, -1)
-    #print(im)
-    ccipca.update(im)
-print("ccipca._mean.shape")
-print(ccipca._mean.shape)
-mean = np.tile(ccipca._mean.copy().reshape(height, 1), (1, width))
-normal_data = data - mean
-print("normal_data")
-print(normal_data)
-print("ccipca._eigenVectors")
-#print(ccipca._eigenVectors.shape)
-print(ccipca._eigenVectors)
-print(ccipca._eigenVectors.shape[0])
-eigenVectors = ccipca._eigenVectors
-feature = np.zeros(eigenVectors.shape)
-for i in range(eigenVectors.shape[0]):
-    mod = np.linalg.norm(eigenVectors[i, :])
-    feature[i, :] = eigenVectors[i, :].copy() / mod
-new_data = np.dot(feature, normal_data)
+    for i in range(width):
+        im = data[:, i].reshape(1, -1)
+        #print(im)
+        ccipca.update(im)
+    # print("ccipca._mean.shape")
+    # print(ccipca._mean.shape)
+    mean = np.tile(ccipca._mean.copy().reshape(height, 1), (1, width))
+    normal_data = data - mean
+    # print("normal_data")
+    # print(normal_data)
+    # print("ccipca._eigenVectors")
+    #print(ccipca._eigenVectors.shape)
+    # print(ccipca._eigenVectors)
+    # print(ccipca._eigenVectors.shape[0])
+    eigenVectors = ccipca._eigenVectors
+    feature = np.zeros(eigenVectors.shape)
+    for i in range(eigenVectors.shape[0]):
+        mod = np.linalg.norm(eigenVectors[i, :])
+        feature[i, :] = eigenVectors[i, :].copy() / mod
+    new_data = np.dot(feature, normal_data)
 
-print("new_data")
-print(new_data)
-#print(new_data.shape)
-#print(feature.shape)
-# 将降维后的数据映射回原空间
-rec_data = np.dot(feature.transpose(), new_data) + mean
-print("rec_data")
-print(rec_data)
-print("data")
-print(data)
-# 压缩后的数据也需要乘100还原成RGB值的范围
-newImage = Image.fromarray(rec_data.astype(np.uint8))
-#newImage = Image.fromarray(data.astype(np.uint8))
-print(ccipca._mean.shape)
-newImage.show()
+    # print("new_data")
+    # print(new_data)
+    #print(new_data.shape)
+    #print(feature.shape)
+    # 将降维后的数据映射回原空间
+    rec_data = np.dot(feature.transpose(), new_data) + mean
+    print(str(k) + ": " + str(psnr(data, rec_data)))
+    # print("rec_data")
+    # print(rec_data)
+    # print("data")
+    # print(data)
+    # 压缩后的数据也需要乘100还原成RGB值的范围
+    newImage = Image.fromarray(rec_data.astype(np.uint8))
+    #newImage = Image.fromarray(data.astype(np.uint8))
+    #print(ccipca._mean.shape)
+    #newImage.show()
+
+
+for k in range(1, 100):
+    run(k)
 #"""
 
 """

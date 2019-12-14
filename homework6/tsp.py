@@ -89,7 +89,7 @@ def draw_H_and_E(citys, H_path, energys):
         ax1.add_patch(p1)
         ax1.add_patch(p2)
         ax1.plot((citys[from_][0], citys[to_][0]), (citys[from_][1], citys[to_][1]), color='red')
-        ax1.annotate(s=chr(97 + to_), xy=citys[to_], xytext=(-8, -4), textcoords='offset points', fontsize=20)
+        #ax1.annotate(s=chr(97 + to_), xy=citys[to_], xytext=(-8, -4), textcoords='offset points', fontsize=20)
     ax1.axis('equal')
     ax1.grid()
     # 绘制能量趋势图
@@ -116,7 +116,7 @@ if __name__ == '__main__':
         ary.append(tmp)
     print(ary)
     citys = np.array(ary)
-    # citys = np.array([[2, 6], [2, 4], [1, 3], [4, 6], [5, 5], [4, 4], [6, 4], [3, 2]])
+    #citys = np.array([[2, 6], [2, 4], [1, 3], [4, 6], [5, 5], [4, 4], [6, 4], [3, 2]])
     distance = get_distance(citys)
     N = len(citys)
     # 设置初始值

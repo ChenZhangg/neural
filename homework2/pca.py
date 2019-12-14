@@ -72,7 +72,7 @@ def myPCA(k = 10):
 
 def psnr():
     data = loadImage()
-    rec_data = myPCA(k=20)
+    rec_data = myPCA(k=2)
     #rec_data = pca()
     mse = np.mean((data - rec_data) ** 2)
     if mse == 0:
