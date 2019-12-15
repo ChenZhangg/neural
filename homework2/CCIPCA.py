@@ -145,7 +145,7 @@ def run(k = 1):
     #newImage.show()
 
 
-for k in range(1, 100):
+for k in range(1, 103):
     run(k)
 #"""
 
