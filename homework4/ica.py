@@ -32,6 +32,7 @@ def myICA():
 
     cx = np.cov(blend)
     value, eigvector = np.linalg.eig(cx)  # 计算协方差阵的特征值
+    print("特征值阵")
     print(value)
     val = value**(-1/2) * np.eye(r, dtype = float)
     white = np.dot(val ,eigvector.T)  #白化矩阵
